@@ -6,23 +6,29 @@
     <script src="https://aframe.io/releases/1.4.2/aframe.min.js"></script>
     <style>
       body { margin: 0; overflow: hidden; }
-      canvas#canvasTexture { display: none; }
+      /* Nascondo il canvas spostandolo fuori schermo (non con display:none) */
+      #canvasTexture { 
+        position: absolute; 
+        left: -9999px; 
+        top: -9999px; 
+        border: 1px solid black; 
+      }
     </style>
   </head>
   <body>
     <canvas id="canvasTexture" width="512" height="512"></canvas>
 
     <a-scene>
-      <!-- Muro: grande, di fronte alla camera -->
+      <!-- Muro -->
       <a-entity id="wall"
                 geometry="primitive: plane; height: 4; width: 6"
                 position="0 2 -5"
-                material="shader: flat; src: #canvasTexture">
+                material="src: #canvasTexture; transparent: false">
       </a-entity>
 
-      <!-- Camera + cursore -->
+      <!-- Camera con cursore -->
       <a-entity position="0 1.6 0">
-        <a-camera wasd-controls-enabled="true" look-controls="pointerLockEnabled: true">
+        <a-camera wasd-controls look-controls pointer-lock>
           <a-cursor color="red"></a-cursor>
         </a-camera>
       </a-entity>
@@ -33,7 +39,7 @@
       const ctx = canvas.getContext('2d');
       const texture = new THREE.CanvasTexture(canvas);
 
-      // Sfondo bianco
+      // Riempio di bianco il canvas (background)
       ctx.fillStyle = "#ffffff";
       ctx.fillRect(0, 0, canvas.width, canvas.height);
       texture.needsUpdate = true;
@@ -47,14 +53,17 @@
           return;
         }
 
+        // Associa la texture del canvas al materiale del muro
         mesh.material.map = texture;
         mesh.material.needsUpdate = true;
 
+        // Ottieni la camera THREE.js
         const camera = document.querySelector('[camera]').getObject3D('camera');
         const raycaster = new THREE.Raycaster();
         const mouse = new THREE.Vector2();
 
         window.addEventListener('click', (event) => {
+          // Coordinate normalized device coordinates
           mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
           mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
 
@@ -66,11 +75,13 @@
             const x = uv.x * canvas.width;
             const y = (1 - uv.y) * canvas.height;
 
+            // Disegna un cerchio rosso nel punto di click
             ctx.beginPath();
             ctx.arc(x, y, 10, 0, 2 * Math.PI);
             ctx.fillStyle = '#ff0000';
             ctx.fill();
-            texture.needsUpdate = true;
+
+            texture.needsUpdate = true; // aggiorna la texture visivamente
           }
         });
       });
