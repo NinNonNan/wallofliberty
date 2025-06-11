@@ -93,14 +93,14 @@
 
   <button id="drawToggle">✏️ Disegna</button>
 
-  <canvas id="canvasTexture" width="768" height="768"></canvas>
+  <canvas id="canvasTexture" width="1024" height="1024"></canvas>
 
   <a-scene background="color: #87ceeb" embedded>
     <a-sky color="#87ceeb"></a-sky>
 
     <!-- Parete mattoni -->
-    <a-plane id="wall" position="0 2 -5" width="6" height="4"
-             material="src: https://cdn.aframe.io/a-painter/images/floor.jpg; repeat: 4 3; side: double;"></a-plane>
+    <a-plane id="wall" position="0 2 -5" width="20" height="4"
+             material="src: #canvasTexture; side: double;"></a-plane>
 
     <a-plane rotation="-90 0 0" width="20" height="20" color="#777" position="0 0 0"></a-plane>
 
@@ -121,6 +121,7 @@
     const cameraEl = document.querySelector('#camera');
     let camera = null;
 
+    // Texture base bianca
     ctx.fillStyle = 'white';
     ctx.fillRect(0, 0, canvas.width, canvas.height);
     let texture = new THREE.CanvasTexture(canvas);
