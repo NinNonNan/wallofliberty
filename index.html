@@ -2,48 +2,52 @@
 <html lang="it">
 <head>
   <meta charset="UTF-8" />
-  <title>Graffiti Wall</title>
+  <title>Graffiti Wall funzionante</title>
   <script src="https://aframe.io/releases/1.4.2/aframe.min.js"></script>
   <style>
     body { margin: 0; overflow: hidden; }
-    #canvasTexture { position: absolute; left: -9999px; top: -9999px; }
+    #canvasTexture { display: none; }
   </style>
 </head>
 <body>
   <canvas id="canvasTexture" width="512" height="512"></canvas>
 
   <a-scene>
-    <a-plane id="wall" position="0 2 -4" width="6" height="4" material="src: #canvasTexture; side: double"></a-plane>
+    <!-- Muro -->
+    <a-plane id="wall" position="0 2 -4" width="6" height="4" material="shader: flat; src: #canvasTexture; side: double"></a-plane>
 
+    <!-- Camera con cursore -->
     <a-entity position="0 1.6 0">
-      <a-camera wasd-controls look-controls>
-        <a-cursor raycaster="objects: #wall" color="red"></a-cursor>
+      <a-camera wasd-controls look-controls="pointerLockEnabled: true">
+        <a-cursor color="red" raycaster="objects: #wall"></a-cursor>
       </a-camera>
     </a-entity>
   </a-scene>
 
   <script>
+    // Setup canvas e sfondo bianco
     const canvas = document.getElementById('canvasTexture');
     const ctx = canvas.getContext('2d');
-
-    ctx.fillStyle = 'white';
+    ctx.fillStyle = "white";
     ctx.fillRect(0, 0, canvas.width, canvas.height);
 
+    // Creiamo la texture THREE da canvas
     const texture = new THREE.CanvasTexture(canvas);
 
     const wall = document.querySelector('#wall');
 
-    wall.addEventListener('model-loaded', () => {
+    // Quando la mesh del muro è pronta, assegniamo la texture al materiale
+    wall.addEventListener('loaded', () => {
       const mesh = wall.getObject3D('mesh');
       if (!mesh) {
-        console.error("Mesh del muro non trovata");
+        console.error("Mesh muro non trovata");
         return;
       }
       mesh.material.map = texture;
       mesh.material.needsUpdate = true;
     });
 
-    // Per sicurezza, aspettiamo che la scena sia pronta
+    // Quando la scena è pronta, aggiungiamo il listener al click per disegnare sul canvas
     document.querySelector('a-scene').addEventListener('loaded', () => {
       window.addEventListener('click', (event) => {
         const cameraEl = document.querySelector('[camera]');
@@ -51,6 +55,7 @@
         const camera = cameraEl.getObject3D('camera');
         if (!camera) return;
 
+        // coordinate normalized device coordinates (NDC)
         const mouse = new THREE.Vector2();
         mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
         mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
@@ -64,14 +69,17 @@
         const intersects = raycaster.intersectObject(mesh);
         if (intersects.length > 0) {
           const uv = intersects[0].uv;
+          // Convertiamo UV in pixel canvas
           const x = uv.x * canvas.width;
           const y = (1 - uv.y) * canvas.height;
 
+          // Disegniamo un cerchio rosso sul canvas
           ctx.beginPath();
-          ctx.arc(x, y, 10, 0, 2 * Math.PI);
-          ctx.fillStyle = 'red';
+          ctx.arc(x, y, 10, 0, Math.PI * 2);
+          ctx.fillStyle = "red";
           ctx.fill();
 
+          // Aggiorniamo la texture perché A-Frame la usi
           texture.needsUpdate = true;
         }
       });
