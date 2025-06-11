@@ -2,33 +2,22 @@
 <html lang="it">
 <head>
   <meta charset="UTF-8" />
-  <title>Graffiti Wall A-Frame</title>
+  <title>Graffiti Wall</title>
   <script src="https://aframe.io/releases/1.4.2/aframe.min.js"></script>
   <style>
     body { margin: 0; overflow: hidden; }
-    #canvasTexture {
-      position: absolute;
-      left: -9999px;
-      top: -9999px;
-    }
+    #canvasTexture { position: absolute; left: -9999px; top: -9999px; }
   </style>
 </head>
 <body>
-  <!-- Canvas nascosto per texture -->
   <canvas id="canvasTexture" width="512" height="512"></canvas>
 
   <a-scene>
-    <!-- Muro -->
-    <a-entity id="wall"
-              geometry="primitive: plane; height: 4; width: 6"
-              position="0 2 -5"
-              material="src: #canvasTexture; side: double">
-    </a-entity>
+    <a-plane id="wall" position="0 2 -4" width="6" height="4" material="src: #canvasTexture; side: double"></a-plane>
 
-    <!-- Camera con controlli e cursore -->
     <a-entity position="0 1.6 0">
       <a-camera wasd-controls look-controls>
-        <a-cursor color="red"></a-cursor>
+        <a-cursor raycaster="objects: #wall" color="red"></a-cursor>
       </a-camera>
     </a-entity>
   </a-scene>
@@ -36,36 +25,43 @@
   <script>
     const canvas = document.getElementById('canvasTexture');
     const ctx = canvas.getContext('2d');
-    const texture = new THREE.CanvasTexture(canvas);
 
-    // Sfondo bianco per il canvas texture
     ctx.fillStyle = 'white';
     ctx.fillRect(0, 0, canvas.width, canvas.height);
-    texture.needsUpdate = true;
+
+    const texture = new THREE.CanvasTexture(canvas);
 
     const wall = document.querySelector('#wall');
 
-    wall.addEventListener('loaded', () => {
+    wall.addEventListener('model-loaded', () => {
       const mesh = wall.getObject3D('mesh');
       if (!mesh) {
-        console.error("Muro non trovato!");
+        console.error("Mesh del muro non trovata");
         return;
       }
       mesh.material.map = texture;
       mesh.material.needsUpdate = true;
+    });
 
-      const camera = document.querySelector('[camera]').getObject3D('camera');
-      const raycaster = new THREE.Raycaster();
-      const mouse = new THREE.Vector2();
-
+    // Per sicurezza, aspettiamo che la scena sia pronta
+    document.querySelector('a-scene').addEventListener('loaded', () => {
       window.addEventListener('click', (event) => {
-        // Calcola coordinate normalized device coordinates
+        const cameraEl = document.querySelector('[camera]');
+        if (!cameraEl) return;
+        const camera = cameraEl.getObject3D('camera');
+        if (!camera) return;
+
+        const mouse = new THREE.Vector2();
         mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
         mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
 
+        const raycaster = new THREE.Raycaster();
         raycaster.setFromCamera(mouse, camera);
-        const intersects = raycaster.intersectObject(mesh);
 
+        const mesh = wall.getObject3D('mesh');
+        if (!mesh) return;
+
+        const intersects = raycaster.intersectObject(mesh);
         if (intersects.length > 0) {
           const uv = intersects[0].uv;
           const x = uv.x * canvas.width;
