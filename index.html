@@ -10,83 +10,68 @@
     </style>
   </head>
   <body>
-    <!-- Canvas nascosto per texture -->
     <canvas id="canvasTexture" width="512" height="512"></canvas>
 
     <a-scene>
-      <!-- Muro con texture bianca iniziale -->
-      <a-plane id="wall"
-               position="0 1.5 -4"
-               width="4"
-               height="3"
-               rotation="0 0 0"
-               color="#ffffff"
-               material="shader: flat; src: #canvasTexture">
-      </a-plane>
+      <!-- Muro: grande, di fronte alla camera -->
+      <a-entity id="wall"
+                geometry="primitive: plane; height: 4; width: 6"
+                position="0 2 -5"
+                material="shader: flat; src: #canvasTexture">
+      </a-entity>
 
       <!-- Camera + cursore -->
-      <a-entity id="cameraRig" position="0 1.6 0">
-        <a-entity camera look-controls></a-entity>
-        <a-cursor material="color: red; shader: flat"></a-cursor>
+      <a-entity position="0 1.6 0">
+        <a-camera wasd-controls-enabled="true" look-controls="pointerLockEnabled: true">
+          <a-cursor color="red"></a-cursor>
+        </a-camera>
       </a-entity>
     </a-scene>
 
     <script>
-      // Aspetta che la scena sia caricata
-      document.querySelector('a-scene').addEventListener('loaded', () => {
-        const wall = document.querySelector('#wall');
-        const canvas = document.getElementById('canvasTexture');
-        const ctx = canvas.getContext('2d');
-        const texture = new THREE.CanvasTexture(canvas);
+      const canvas = document.getElementById('canvasTexture');
+      const ctx = canvas.getContext('2d');
+      const texture = new THREE.CanvasTexture(canvas);
 
-        // Sfondo iniziale bianco
-        ctx.fillStyle = '#ffffff';
-        ctx.fillRect(0, 0, canvas.width, canvas.height);
-        texture.needsUpdate = true;
+      // Sfondo bianco
+      ctx.fillStyle = "#ffffff";
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+      texture.needsUpdate = true;
 
-        wall.addEventListener('loaded', () => {
-          const mesh = wall.getObject3D('mesh');
-          if (!mesh) {
-            console.error('Mesh del muro non trovata');
-            return;
+      const wall = document.querySelector('#wall');
+
+      wall.addEventListener('loaded', () => {
+        const mesh = wall.getObject3D('mesh');
+        if (!mesh) {
+          console.error("Mesh del muro non trovata.");
+          return;
+        }
+
+        mesh.material.map = texture;
+        mesh.material.needsUpdate = true;
+
+        const camera = document.querySelector('[camera]').getObject3D('camera');
+        const raycaster = new THREE.Raycaster();
+        const mouse = new THREE.Vector2();
+
+        window.addEventListener('click', (event) => {
+          mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
+          mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
+
+          raycaster.setFromCamera(mouse, camera);
+          const intersects = raycaster.intersectObject(mesh);
+
+          if (intersects.length > 0) {
+            const uv = intersects[0].uv;
+            const x = uv.x * canvas.width;
+            const y = (1 - uv.y) * canvas.height;
+
+            ctx.beginPath();
+            ctx.arc(x, y, 10, 0, 2 * Math.PI);
+            ctx.fillStyle = '#ff0000';
+            ctx.fill();
+            texture.needsUpdate = true;
           }
-
-          // Applica la texture al muro
-          mesh.material.map = texture;
-          mesh.material.needsUpdate = true;
-
-          // Ottieni la camera
-          const cameraEl = document.querySelector('[camera]');
-          const camera = cameraEl.getObject3D('camera');
-          if (!camera) {
-            console.error('Camera non disponibile');
-            return;
-          }
-
-          const raycaster = new THREE.Raycaster();
-          const mouse = new THREE.Vector2();
-
-          // Disegna sul muro quando clicchi
-          window.addEventListener('click', (event) => {
-            mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
-            mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
-
-            raycaster.setFromCamera(mouse, camera);
-            const intersects = raycaster.intersectObject(mesh);
-
-            if (intersects.length > 0) {
-              const uv = intersects[0].uv;
-              const x = uv.x * canvas.width;
-              const y = (1 - uv.y) * canvas.height;
-
-              // Spray rosso
-              ctx.beginPath();
-              ctx.arc(x, y, 10, 0, 2 * Math.PI);
-              ctx.fillStyle = '#ff0000';
-              ctx.fill();
-              texture.needsUpdate = true;
-            }
-          });
         });
       });
     </script>
