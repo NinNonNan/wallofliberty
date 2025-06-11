@@ -2,14 +2,14 @@
 <html lang="it">
 <head>
   <meta charset="UTF-8" />
-  <title>Graffiti Wall A-Frame + Popup Perfetto</title>
+  <title>Graffiti Wall con Texture Mattoni</title>
   <script src="https://aframe.io/releases/1.4.2/aframe.min.js"></script>
   <style>
     html, body {
       margin: 0; padding: 0; height: 100%;
       overflow: hidden;
       font-family: Arial, sans-serif;
-      background: #87ceeb; /* fallback sfondo azzurro */
+      background: #87ceeb;
     }
 
     #popup {
@@ -96,16 +96,14 @@
   <canvas id="canvasTexture" width="768" height="768"></canvas>
 
   <a-scene background="color: #87ceeb" embedded>
-    <!-- Cielo semplice -->
     <a-sky color="#87ceeb"></a-sky>
 
-    <!-- Muro -->
-    <a-plane id="wall" position="0 2 -5" width="6" height="4" material="shader: flat; side: double; color: white;"></a-plane>
+    <!-- Parete mattoni -->
+    <a-plane id="wall" position="0 2 -5" width="6" height="4"
+             material="src: https://cdn.aframe.io/a-painter/images/floor.jpg; repeat: 4 3; side: double;"></a-plane>
 
-    <!-- Suolo -->
     <a-plane rotation="-90 0 0" width="20" height="20" color="#777" position="0 0 0"></a-plane>
 
-    <!-- Camera + cursore -->
     <a-entity id="cameraRig" position="0 1.6 0">
       <a-camera id="camera" wasd-controls look-controls>
         <a-cursor id="cursor" color="red" raycaster="objects: #wall" fuse="false"></a-cursor>
@@ -114,7 +112,6 @@
   </a-scene>
 
   <script>
-    // Variabili DOM
     const popup = document.getElementById('popup');
     const closePopup = document.getElementById('closePopup');
     const drawToggle = document.getElementById('drawToggle');
@@ -124,12 +121,10 @@
     const cameraEl = document.querySelector('#camera');
     let camera = null;
 
-    // Inizializza canvas texture con sfondo bianco
     ctx.fillStyle = 'white';
     ctx.fillRect(0, 0, canvas.width, canvas.height);
     let texture = new THREE.CanvasTexture(canvas);
 
-    // Applica la texture al muro appena caricato
     function applyTexture() {
       const mesh = wall.getObject3D('mesh');
       if (mesh) {
@@ -137,16 +132,13 @@
         mesh.material.needsUpdate = true;
       }
     }
-    // Aggiorna texture anche in caso l'evento non venga emesso
     setTimeout(applyTexture, 100);
     wall.addEventListener('materialtextureloaded', applyTexture);
 
-    // Gestione popup
     closePopup.onclick = () => {
       popup.style.display = 'none';
     };
 
-    // Stato disegno
     let drawingMode = false;
     drawToggle.onclick = () => {
       drawingMode = !drawingMode;
@@ -162,7 +154,6 @@
       }
     };
 
-    // Raycaster per individuare UV
     const raycaster = new THREE.Raycaster();
     const mouse = new THREE.Vector2();
 
@@ -243,7 +234,6 @@
       ctx.lastPos = null;
       event.preventDefault();
     }, {passive:false});
-
   </script>
 
 </body>
