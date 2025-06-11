@@ -2,7 +2,7 @@
 <html lang="it">
 <head>
   <meta charset="UTF-8" />
-  <title>Graffiti Wall - Disegno Continuo con Cursore Visibile</title>
+  <title>Graffiti Wall - Navigazione e Disegno</title>
   <script src="https://aframe.io/releases/1.4.2/aframe.min.js"></script>
   <style>
     body { margin: 0; overflow: hidden; }
@@ -12,7 +12,7 @@
 <body>
   <canvas id="canvasTexture" width="512" height="512"></canvas>
 
-  <a-scene background="color: #cccccc" cursor="rayOrigin: mouse">
+  <a-scene background="color: #cccccc">
 
     <!-- Luci -->
     <a-entity light="type: ambient; color: #888"></a-entity>
@@ -26,10 +26,11 @@
     <!-- Suolo -->
     <a-plane rotation="-90 0 0" width="20" height="20" color="#666666"></a-plane>
 
-    <!-- Camera e cursore manina sempre visibile -->
+    <!-- Camera con cursore -->
     <a-entity position="0 1.6 0">
       <a-camera wasd-controls look-controls="pointerLockEnabled: false">
         <a-cursor
+          id="cursor"
           color="red"
           geometry="primitive: ring; radiusInner: 0.015; radiusOuter: 0.025"
           material="color: red; shader: flat"
@@ -73,6 +74,7 @@
       const raycaster = new THREE.Raycaster();
       const mouse = new THREE.Vector2();
 
+      let drawingMode = false;
       let drawing = false;
       let lastPos = null;
 
@@ -84,7 +86,29 @@
         };
       }
 
+      // Entra in modalità disegno con barra spaziatrice premuta
+      window.addEventListener('keydown', (e) => {
+        if (e.code === 'Space') {
+          drawingMode = true;
+          // Per sicurezza impediamo lo scrolling della pagina con spazio
+          e.preventDefault();
+          // Cambia colore cursore per indicare modalità disegno
+          document.querySelector('#cursor').setAttribute('color', 'green');
+        }
+      });
+
+      window.addEventListener('keyup', (e) => {
+        if (e.code === 'Space') {
+          drawingMode = false;
+          drawing = false;
+          lastPos = null;
+          document.querySelector('#cursor').setAttribute('color', 'red');
+        }
+      });
+
       window.addEventListener('mousedown', (event) => {
+        if (!drawingMode) return;  // disegna solo se in modalità disegno
+
         mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
         mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
 
