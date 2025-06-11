@@ -1,90 +1,85 @@
 <!DOCTYPE html>
 <html lang="it">
-  <head>
-    <meta charset="UTF-8" />
-    <title>Graffiti Wall</title>
-    <script src="https://aframe.io/releases/1.4.2/aframe.min.js"></script>
-    <style>
-      body { margin: 0; overflow: hidden; }
-      /* Nascondo il canvas spostandolo fuori schermo (non con display:none) */
-      #canvasTexture { 
-        position: absolute; 
-        left: -9999px; 
-        top: -9999px; 
-        border: 1px solid black; 
+<head>
+  <meta charset="UTF-8" />
+  <title>Graffiti Wall A-Frame</title>
+  <script src="https://aframe.io/releases/1.4.2/aframe.min.js"></script>
+  <style>
+    body { margin: 0; overflow: hidden; }
+    #canvasTexture {
+      position: absolute;
+      left: -9999px;
+      top: -9999px;
+    }
+  </style>
+</head>
+<body>
+  <!-- Canvas nascosto per texture -->
+  <canvas id="canvasTexture" width="512" height="512"></canvas>
+
+  <a-scene>
+    <!-- Muro -->
+    <a-entity id="wall"
+              geometry="primitive: plane; height: 4; width: 6"
+              position="0 2 -5"
+              material="src: #canvasTexture; side: double">
+    </a-entity>
+
+    <!-- Camera con controlli e cursore -->
+    <a-entity position="0 1.6 0">
+      <a-camera wasd-controls look-controls>
+        <a-cursor color="red"></a-cursor>
+      </a-camera>
+    </a-entity>
+  </a-scene>
+
+  <script>
+    const canvas = document.getElementById('canvasTexture');
+    const ctx = canvas.getContext('2d');
+    const texture = new THREE.CanvasTexture(canvas);
+
+    // Sfondo bianco per il canvas texture
+    ctx.fillStyle = 'white';
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    texture.needsUpdate = true;
+
+    const wall = document.querySelector('#wall');
+
+    wall.addEventListener('loaded', () => {
+      const mesh = wall.getObject3D('mesh');
+      if (!mesh) {
+        console.error("Muro non trovato!");
+        return;
       }
-    </style>
-  </head>
-  <body>
-    <canvas id="canvasTexture" width="512" height="512"></canvas>
+      mesh.material.map = texture;
+      mesh.material.needsUpdate = true;
 
-    <a-scene>
-      <!-- Muro -->
-      <a-entity id="wall"
-                geometry="primitive: plane; height: 4; width: 6"
-                position="0 2 -5"
-                material="src: #canvasTexture; transparent: false">
-      </a-entity>
+      const camera = document.querySelector('[camera]').getObject3D('camera');
+      const raycaster = new THREE.Raycaster();
+      const mouse = new THREE.Vector2();
 
-      <!-- Camera con cursore -->
-      <a-entity position="0 1.6 0">
-        <a-camera wasd-controls look-controls pointer-lock>
-          <a-cursor color="red"></a-cursor>
-        </a-camera>
-      </a-entity>
-    </a-scene>
+      window.addEventListener('click', (event) => {
+        // Calcola coordinate normalized device coordinates
+        mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
+        mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
 
-    <script>
-      const canvas = document.getElementById('canvasTexture');
-      const ctx = canvas.getContext('2d');
-      const texture = new THREE.CanvasTexture(canvas);
+        raycaster.setFromCamera(mouse, camera);
+        const intersects = raycaster.intersectObject(mesh);
 
-      // Riempio di bianco il canvas (background)
-      ctx.fillStyle = "#ffffff";
-      ctx.fillRect(0, 0, canvas.width, canvas.height);
-      texture.needsUpdate = true;
+        if (intersects.length > 0) {
+          const uv = intersects[0].uv;
+          const x = uv.x * canvas.width;
+          const y = (1 - uv.y) * canvas.height;
 
-      const wall = document.querySelector('#wall');
+          ctx.beginPath();
+          ctx.arc(x, y, 10, 0, 2 * Math.PI);
+          ctx.fillStyle = 'red';
+          ctx.fill();
 
-      wall.addEventListener('loaded', () => {
-        const mesh = wall.getObject3D('mesh');
-        if (!mesh) {
-          console.error("Mesh del muro non trovata.");
-          return;
+          texture.needsUpdate = true;
         }
-
-        // Associa la texture del canvas al materiale del muro
-        mesh.material.map = texture;
-        mesh.material.needsUpdate = true;
-
-        // Ottieni la camera THREE.js
-        const camera = document.querySelector('[camera]').getObject3D('camera');
-        const raycaster = new THREE.Raycaster();
-        const mouse = new THREE.Vector2();
-
-        window.addEventListener('click', (event) => {
-          // Coordinate normalized device coordinates
-          mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
-          mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
-
-          raycaster.setFromCamera(mouse, camera);
-          const intersects = raycaster.intersectObject(mesh);
-
-          if (intersects.length > 0) {
-            const uv = intersects[0].uv;
-            const x = uv.x * canvas.width;
-            const y = (1 - uv.y) * canvas.height;
-
-            // Disegna un cerchio rosso nel punto di click
-            ctx.beginPath();
-            ctx.arc(x, y, 10, 0, 2 * Math.PI);
-            ctx.fillStyle = '#ff0000';
-            ctx.fill();
-
-            texture.needsUpdate = true; // aggiorna la texture visivamente
-          }
-        });
       });
-    </script>
-  </body>
+    });
+  </script>
+</body>
 </html>
