@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8">
+    <title>Graffiti Wall in A-Frame</title>
+    <script src="https://aframe.io/releases/1.4.2/aframe.min.js"></script>
+  </head>
+  <body>
+    <canvas id="sprayCanvas" width="512" height="512" style="display:none;"></canvas>
+
+    <a-scene>
+      <!-- Muro con texture dinamica -->
+      <a-plane id="wall"
+               position="0 1.5 -4"
+               width="4"
+               height="3"
+               material="shader: flat; src: #canvasTexture">
+      </a-plane>
+
+      <!-- Telecamera -->
+      <a-entity camera look-controls position="0 1.6 0">
+        <a-cursor
+          id="cursor"
+          fuse="false"
+          raycaster="objects: #wall"
+          material="color: red; shader: flat">
+        </a-cursor>
+      </a-entity>
+    </a-scene>
+
+    <script>
+      const canvas = document.getElementById('sprayCanvas');
+      const ctx = canvas.getContext('2d');
+
+      // Sfondo bianco iniziale
+      ctx.fillStyle = '#ffffff';
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+      const texture = new THREE.CanvasTexture(canvas);
+      const wall = document.querySelector('#wall');
+      wall.getObject3D('mesh').material.map = texture;
+      wall.getObject3D('mesh').material.needsUpdate = true;
+
+      const raycaster = new THREE.Raycaster();
+      const mouse = new THREE.Vector2();
+      const scene = document.querySelector('a-scene').object3D;
+      const camera = document.querySelector('[camera]').getObject3D('camera');
+
+      window.addEventListener('click', function (event) {
+        // Normalizza coordinate del mouse
+        mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
+        mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
+
+        raycaster.setFromCamera(mouse, camera);
+        const intersects = raycaster.intersectObject(wall.getObject3D('mesh'));
+
+        if (intersects.length > 0) {
+          const uv = intersects[0].uv;
+          const x = uv.x * canvas.width;
+          const y = (1 - uv.y) * canvas.height;
+
+          // Disegna un cerchio spray
+          ctx.beginPath();
+          ctx.arc(x, y, 10, 0, 2 * Math.PI);
+          ctx.fillStyle = '#ff0000'; // Colore spray
+          ctx.fill();
+
+          texture.needsUpdate = true;
+        }
+      });
+    </script>
+  </body>
+</html>
