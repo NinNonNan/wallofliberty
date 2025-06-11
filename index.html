@@ -2,148 +2,170 @@
 <html lang="it">
 <head>
   <meta charset="UTF-8" />
-  <title>Graffiti Wall Touch Friendly</title>
+  <title>Graffiti Wall A-Frame + Popup Perfetto</title>
   <script src="https://aframe.io/releases/1.4.2/aframe.min.js"></script>
   <style>
-    body { margin: 0; overflow: hidden; font-family: Arial, sans-serif; }
-    #canvasTexture { position: absolute; left: -9999px; top: -9999px; }
-    #drawToggle {
+    html, body {
+      margin: 0; padding: 0; height: 100%;
+      overflow: hidden;
+      font-family: Arial, sans-serif;
+      background: #87ceeb; /* fallback sfondo azzurro */
+    }
+
+    #popup {
       position: fixed;
-      bottom: 20px;
-      right: 20px;
-      background: #ff5722;
+      top: 20px; left: 50%; transform: translateX(-50%);
+      width: 320px;
+      background: rgba(0,0,0,0.8);
       color: white;
+      border-radius: 12px;
+      padding: 20px;
+      box-sizing: border-box;
+      box-shadow: 0 0 15px rgba(0,0,0,0.7);
+      font-size: 16px;
+      user-select: none;
+      z-index: 1000;
+    }
+
+    #popup h2 {
+      margin-top: 0;
+      font-size: 22px;
+      border-bottom: 2px solid #ff5722;
+      padding-bottom: 8px;
+    }
+
+    #popup button {
+      margin-top: 15px;
+      background: #ff5722;
       border: none;
-      padding: 12px 20px;
-      font-size: 18px;
+      color: white;
+      font-size: 16px;
+      padding: 10px 16px;
       border-radius: 8px;
       cursor: pointer;
-      z-index: 1000;
+      width: 100%;
+      transition: background-color 0.3s ease;
+    }
+    #popup button:hover {
+      background: #e64a19;
+    }
+
+    #drawToggle {
+      position: fixed;
+      bottom: 25px;
+      right: 25px;
+      z-index: 900;
+      background: #ff5722;
+      border: none;
+      color: white;
+      font-size: 18px;
+      padding: 14px 22px;
+      border-radius: 10px;
+      cursor: pointer;
       user-select: none;
+      box-shadow: 0 0 12px rgba(255, 87, 34, 0.7);
+      transition: background-color 0.3s ease;
     }
     #drawToggle.active {
       background: #4caf50;
+      box-shadow: 0 0 15px rgba(76, 175, 80, 0.7);
     }
-    #popup {
-      position: fixed;
-      top: 0; left: 0; right: 0; bottom: 0;
-      background: rgba(0,0,0,0.8);
-      color: white;
-      display: flex;
-      justify-content: center;
-      align-items: center;
-      padding: 20px;
-      text-align: center;
-      font-size: 18px;
-      z-index: 2000;
-      user-select: none;
-      flex-direction: column;
-    }
-    #popup button {
-      margin-top: 20px;
-      padding: 10px 16px;
-      font-size: 16px;
-      border: none;
-      border-radius: 6px;
-      background: #2196f3;
-      color: white;
-      cursor: pointer;
+
+    canvas#canvasTexture {
+      position: absolute;
+      left: -9999px;
+      top: -9999px;
     }
   </style>
 </head>
 <body>
 
   <div id="popup">
-    <div>
-      <h2>Benvenuto nel Graffiti Wall!</h2>
-      <p>Per scrivere sul muro, premi il pulsante <strong>✏️ Disegna</strong> in basso a destra.<br>
-      In modalità disegno, trascina il dito (o il mouse) sul muro per scrivere.<br>
-      Quando la modalità è disattivata, puoi spostare la visuale normalmente.<br><br>
-      Il cursore rosso indica il punto di scrittura.</p>
-    </div>
+    <h2>Benvenuto nel Graffiti Wall!</h2>
+    <p>
+      Premi il pulsante <strong>✏️ Disegna</strong> per entrare in modalità disegno.<br>
+      Trascina il dito o il mouse sulla parete per scrivere.<br>
+      Quando la modalità è disattivata puoi muoverti liberamente.<br>
+      Il puntatore rosso indica il punto di scrittura.
+    </p>
     <button id="closePopup">Ho capito!</button>
   </div>
 
-  <canvas id="canvasTexture" width="768" height="768"></canvas>
-
   <button id="drawToggle">✏️ Disegna</button>
 
-  <a-scene background="color: #87ceeb" embedded>
-    <!-- Muro più grande -->
-    <a-plane id="wall" position="0 2 -6" width="8" height="6" material="shader: flat; side: double;"></a-plane>
-    
-    <!-- Suolo -->
-    <a-plane position="0 0 0" rotation="-90 0 0" width="20" height="20" color="#555"></a-plane>
+  <canvas id="canvasTexture" width="768" height="768"></canvas>
 
-    <!-- Camera + cursore rosso -->
+  <a-scene background="color: #87ceeb" embedded>
+    <!-- Cielo semplice -->
+    <a-sky color="#87ceeb"></a-sky>
+
+    <!-- Muro -->
+    <a-plane id="wall" position="0 2 -5" width="6" height="4" material="shader: flat; side: double; color: white;"></a-plane>
+
+    <!-- Suolo -->
+    <a-plane rotation="-90 0 0" width="20" height="20" color="#777" position="0 0 0"></a-plane>
+
+    <!-- Camera + cursore -->
     <a-entity id="cameraRig" position="0 1.6 0">
       <a-camera id="camera" wasd-controls look-controls>
-        <a-cursor id="cursor" color="red" fuse="false" raycaster="objects: #wall"></a-cursor>
+        <a-cursor id="cursor" color="red" raycaster="objects: #wall" fuse="false"></a-cursor>
       </a-camera>
     </a-entity>
   </a-scene>
 
   <script>
-    const canvas = document.getElementById('canvasTexture');
-    const ctx = canvas.getContext('2d');
-    const texture = new THREE.CanvasTexture(canvas);
-
-    // Imposta sfondo bianco
-    ctx.fillStyle = 'white';
-    ctx.fillRect(0, 0, canvas.width, canvas.height);
-
-    const wall = document.querySelector('#wall');
-    // Applica la texture canvas al muro
-    wall.addEventListener('materialtextureloaded', () => {
-      const mesh = wall.getObject3D('mesh');
-      if (mesh) {
-        mesh.material.map = texture;
-        mesh.material.needsUpdate = true;
-      }
-    });
-    // Nel caso l'evento non sia affidabile, lo impostiamo subito dopo la prima frame
-    setTimeout(() => {
-      const mesh = wall.getObject3D('mesh');
-      if (mesh) {
-        mesh.material.map = texture;
-        mesh.material.needsUpdate = true;
-      }
-    }, 100);
-
-    const drawToggle = document.getElementById('drawToggle');
+    // Variabili DOM
     const popup = document.getElementById('popup');
     const closePopup = document.getElementById('closePopup');
+    const drawToggle = document.getElementById('drawToggle');
+    const canvas = document.getElementById('canvasTexture');
+    const ctx = canvas.getContext('2d');
+    const wall = document.querySelector('#wall');
+    const cameraEl = document.querySelector('#camera');
+    let camera = null;
 
+    // Inizializza canvas texture con sfondo bianco
+    ctx.fillStyle = 'white';
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    let texture = new THREE.CanvasTexture(canvas);
+
+    // Applica la texture al muro appena caricato
+    function applyTexture() {
+      const mesh = wall.getObject3D('mesh');
+      if (mesh) {
+        mesh.material.map = texture;
+        mesh.material.needsUpdate = true;
+      }
+    }
+    // Aggiorna texture anche in caso l'evento non venga emesso
+    setTimeout(applyTexture, 100);
+    wall.addEventListener('materialtextureloaded', applyTexture);
+
+    // Gestione popup
     closePopup.onclick = () => {
       popup.style.display = 'none';
     };
 
+    // Stato disegno
     let drawingMode = false;
-
-    const cameraEl = document.querySelector('#camera');
-    let camera = null;
-
     drawToggle.onclick = () => {
       drawingMode = !drawingMode;
       drawToggle.classList.toggle('active', drawingMode);
       if (drawingMode) {
         drawToggle.textContent = '✋ Sposta';
-        // Disabilita controlli camera per disegnare
         cameraEl.removeAttribute('look-controls');
         cameraEl.removeAttribute('wasd-controls');
       } else {
         drawToggle.textContent = '✏️ Disegna';
-        // Riabilita controlli camera
         cameraEl.setAttribute('look-controls', '');
         cameraEl.setAttribute('wasd-controls', '');
       }
     };
 
-    // Setup raycaster e mouse
+    // Raycaster per individuare UV
     const raycaster = new THREE.Raycaster();
     const mouse = new THREE.Vector2();
 
-    // Ottieni la camera THREE una volta caricata la scena
     document.querySelector('a-scene').addEventListener('loaded', () => {
       camera = cameraEl.getObject3D('camera');
     });
@@ -221,6 +243,7 @@
       ctx.lastPos = null;
       event.preventDefault();
     }, {passive:false});
+
   </script>
 
 </body>
