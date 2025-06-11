@@ -64,16 +64,20 @@
     <button id="closePopup">Ho capito!</button>
   </div>
 
-  <canvas id="canvasTexture" width="768" height="576"></canvas>
+  <canvas id="canvasTexture" width="768" height="768"></canvas>
 
   <button id="drawToggle">✏️ Disegna</button>
 
-  <a-scene background="color: #87ceeb" embedded>
-    <a-plane id="wall" position="0 2 -6" width="8" height="6" material="shader: flat; side: double; src: #canvasTexture"></a-plane>
+  <a-scene background="color: #87ceeb">
+    <!-- Muro più grande -->
+    <a-plane id="wall" position="0 2 -6" width="8" height="6" material="src: #canvasTexture; side: double; shader: flat"></a-plane>
+    
+    <!-- Suolo -->
     <a-plane position="0 0 0" rotation="-90 0 0" width="20" height="20" color="#555"></a-plane>
 
-    <a-entity id="cameraRig" position="0 1.6 0">
-      <a-camera id="camera" wasd-controls look-controls>
+    <!-- Camera + cursore rosso -->
+    <a-entity position="0 1.6 0" id="cameraRig">
+      <a-camera wasd-controls look-controls>
         <a-cursor id="cursor" color="red" fuse="false" raycaster="objects: #wall"></a-cursor>
       </a-camera>
     </a-entity>
@@ -82,40 +86,26 @@
   <script>
     const canvas = document.getElementById('canvasTexture');
     const ctx = canvas.getContext('2d');
+    const texture = new THREE.CanvasTexture(canvas);
 
-    // Sfondo bianco
+    // Sfondo bianco canvas
     ctx.fillStyle = 'white';
     ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-    const texture = new THREE.CanvasTexture(canvas);
-
     const wall = document.querySelector('#wall');
 
-    wall.addEventListener('model-loaded', () => {
+    wall.addEventListener('loaded', () => {
       const mesh = wall.getObject3D('mesh');
-      if (mesh) {
-        mesh.material.map = texture;
-        mesh.material.needsUpdate = true;
+      if (!mesh) {
+        console.error('Mesh del muro non trovata');
+        return;
       }
+      mesh.material.map = texture;
+      mesh.material.needsUpdate = true;
     });
 
-    // In A-Frame 1.4.2 a volte il modello non si carica in modo visibile, usiamo 'loaded' scena per sicurezza
-    const scene = document.querySelector('a-scene');
-    const cameraEl = document.getElementById('camera');
-    let camera;
-
-    scene.addEventListener('loaded', () => {
-      camera = cameraEl.getObject3D('camera');
-      const mesh = wall.getObject3D('mesh');
-      if(mesh){
-        mesh.material.map = texture;
-        mesh.material.needsUpdate = true;
-      }
-    });
-
-    // Modalità disegno attiva/disattiva
+    // Modalità disegno ON/OFF
     let drawingMode = false;
-    let isDrawing = false;
 
     const drawToggle = document.getElementById('drawToggle');
     const popup = document.getElementById('popup');
@@ -128,47 +118,51 @@
     drawToggle.onclick = () => {
       drawingMode = !drawingMode;
       drawToggle.classList.toggle('active', drawingMode);
-      drawToggle.textContent = drawingMode ? '✋ Sposta' : '✏️ Disegna';
+      if(drawingMode) {
+        drawToggle.textContent = '✋ Sposta';
+      } else {
+        drawToggle.textContent = '✏️ Disegna';
+      }
     };
 
+    // Variabili per il disegno
+    const sceneEl = document.querySelector('a-scene');
+    const cameraEl = document.querySelector('a-camera');
+    const camera = cameraEl.getObject3D('camera');
     const raycaster = new THREE.Raycaster();
     const mouse = new THREE.Vector2();
 
-    // Funzione per disegnare sul canvas dato uv
+    let isDrawing = false;
+
     function drawAtUV(uv) {
-      if (!uv) return;
       const x = uv.x * canvas.width;
       const y = (1 - uv.y) * canvas.height;
+      ctx.lineWidth = 8;
+      ctx.lineCap = 'round';
+      ctx.strokeStyle = '#ff0000';
 
       if (!ctx.lastPos) {
-        ctx.lastPos = { x, y };
+        ctx.lastPos = {x, y};
       }
-
-      ctx.lineJoin = 'round';
-      ctx.lineCap = 'round';
-      ctx.strokeStyle = 'red';
-      ctx.lineWidth = 8;
-
       ctx.beginPath();
       ctx.moveTo(ctx.lastPos.x, ctx.lastPos.y);
       ctx.lineTo(x, y);
       ctx.stroke();
 
-      ctx.lastPos = { x, y };
+      ctx.lastPos = {x, y};
       texture.needsUpdate = true;
     }
 
-    // Prendere uv dal pointer event
     function getUVFromEvent(event) {
+      // Aggiorna mouse in coordinate normalized
       let clientX, clientY;
-      if (event.touches && event.touches.length > 0) {
+      if(event.touches && event.touches.length > 0){
         clientX = event.touches[0].clientX;
         clientY = event.touches[0].clientY;
       } else {
         clientX = event.clientX;
         clientY = event.clientY;
       }
-
       mouse.x = (clientX / window.innerWidth) * 2 - 1;
       mouse.y = -(clientY / window.innerHeight) * 2 + 1;
 
@@ -184,31 +178,35 @@
       return null;
     }
 
-    // Eventi per disegno con pointer events
-    window.addEventListener('pointerdown', (e) => {
-      if (!drawingMode) return;
-      const uv = getUVFromEvent(e);
+    // Eventi touch/mouse
+    window.addEventListener('pointerdown', (event) => {
+      if (!drawingMode) return; // disabilitato, niente disegno
+      const uv = getUVFromEvent(event);
       if (!uv) return;
       isDrawing = true;
-      ctx.lastPos = null;
+      ctx.lastPos = null; // reset per disegno linee fluide
       drawAtUV(uv);
-      e.preventDefault();
-    }, { passive: false });
+      event.preventDefault();
+    }, {passive:false});
 
-    window.addEventListener('pointermove', (e) => {
-      if (!drawingMode || !isDrawing) return;
-      const uv = getUVFromEvent(e);
+    window.addEventListener('pointermove', (event) => {
+      if (!drawingMode) return;
+      if (!isDrawing) return;
+      const uv = getUVFromEvent(event);
       if (!uv) return;
       drawAtUV(uv);
-      e.preventDefault();
-    }, { passive: false });
+      event.preventDefault();
+    }, {passive:false});
 
-    window.addEventListener('pointerup', (e) => {
+    window.addEventListener('pointerup', (event) => {
       if (!drawingMode) return;
       isDrawing = false;
       ctx.lastPos = null;
-      e.preventDefault();
-    }, { passive: false });
+      event.preventDefault();
+    }, {passive:false});
+
+    // Il cursore è sempre visibile e segue il muro
+    // La camera e il cursore sono gestiti da A-Frame già
 
   </script>
 </body>
