@@ -68,15 +68,15 @@
 
   <button id="drawToggle">✏️ Disegna</button>
 
-  <a-scene background="color: #87ceeb">
+  <a-scene background="color: #87ceeb" embedded>
     <!-- Muro più grande -->
-    <a-plane id="wall" position="0 2 -6" width="8" height="6" material="src: #canvasTexture; side: double; shader: flat"></a-plane>
+    <a-plane id="wall" position="0 2 -6" width="8" height="6" material="shader: flat; side: double;"></a-plane>
     
     <!-- Suolo -->
     <a-plane position="0 0 0" rotation="-90 0 0" width="20" height="20" color="#555"></a-plane>
 
     <!-- Camera + cursore rosso -->
-    <a-entity position="0 1.6 0" id="cameraRig">
+    <a-entity id="cameraRig" position="0 1.6 0">
       <a-camera id="camera" wasd-controls look-controls>
         <a-cursor id="cursor" color="red" fuse="false" raycaster="objects: #wall"></a-cursor>
       </a-camera>
@@ -88,24 +88,27 @@
     const ctx = canvas.getContext('2d');
     const texture = new THREE.CanvasTexture(canvas);
 
-    // Sfondo bianco canvas
+    // Imposta sfondo bianco
     ctx.fillStyle = 'white';
     ctx.fillRect(0, 0, canvas.width, canvas.height);
 
     const wall = document.querySelector('#wall');
-
-    wall.addEventListener('loaded', () => {
+    // Applica la texture canvas al muro
+    wall.addEventListener('materialtextureloaded', () => {
       const mesh = wall.getObject3D('mesh');
-      if (!mesh) {
-        console.error('Mesh del muro non trovata');
-        return;
+      if (mesh) {
+        mesh.material.map = texture;
+        mesh.material.needsUpdate = true;
       }
-      mesh.material.map = texture;
-      mesh.material.needsUpdate = true;
     });
-
-    // Modalità disegno ON/OFF
-    let drawingMode = false;
+    // Nel caso l'evento non sia affidabile, lo impostiamo subito dopo la prima frame
+    setTimeout(() => {
+      const mesh = wall.getObject3D('mesh');
+      if (mesh) {
+        mesh.material.map = texture;
+        mesh.material.needsUpdate = true;
+      }
+    }, 100);
 
     const drawToggle = document.getElementById('drawToggle');
     const popup = document.getElementById('popup');
@@ -115,8 +118,11 @@
       popup.style.display = 'none';
     };
 
+    let drawingMode = false;
+
     const cameraEl = document.querySelector('#camera');
-    // Funzione toggle modalità disegno/sposta
+    let camera = null;
+
     drawToggle.onclick = () => {
       drawingMode = !drawingMode;
       drawToggle.classList.toggle('active', drawingMode);
@@ -133,16 +139,22 @@
       }
     };
 
-    // Variabili per il disegno
-    const camera = cameraEl.getObject3D('camera');
+    // Setup raycaster e mouse
     const raycaster = new THREE.Raycaster();
     const mouse = new THREE.Vector2();
+
+    // Ottieni la camera THREE una volta caricata la scena
+    document.querySelector('a-scene').addEventListener('loaded', () => {
+      camera = cameraEl.getObject3D('camera');
+    });
 
     let isDrawing = false;
 
     function drawAtUV(uv) {
+      if (!uv) return;
       const x = uv.x * canvas.width;
       const y = (1 - uv.y) * canvas.height;
+
       ctx.lineWidth = 8;
       ctx.lineCap = 'round';
       ctx.strokeStyle = '#ff0000';
@@ -160,7 +172,6 @@
     }
 
     function getUVFromEvent(event) {
-      // Aggiorna mouse in coordinate normalized
       let clientX, clientY;
       if(event.touches && event.touches.length > 0){
         clientX = event.touches[0].clientX;
@@ -172,6 +183,7 @@
       mouse.x = (clientX / window.innerWidth) * 2 - 1;
       mouse.y = -(clientY / window.innerHeight) * 2 + 1;
 
+      if (!camera) return null;
       raycaster.setFromCamera(mouse, camera);
 
       const mesh = wall.getObject3D('mesh');
@@ -184,13 +196,12 @@
       return null;
     }
 
-    // Eventi touch/mouse per disegno
     window.addEventListener('pointerdown', (event) => {
       if (!drawingMode) return;
       const uv = getUVFromEvent(event);
       if (!uv) return;
       isDrawing = true;
-      ctx.lastPos = null; // reset per linee fluide
+      ctx.lastPos = null;
       drawAtUV(uv);
       event.preventDefault();
     }, {passive:false});
@@ -210,7 +221,7 @@
       ctx.lastPos = null;
       event.preventDefault();
     }, {passive:false});
-
   </script>
+
 </body>
 </html>
